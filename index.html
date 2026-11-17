@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Autotrol 255 · EiQ — modello 3D interattivo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--or:#E8601C;--ink:#1d2125;--mute:#6b737c;--line:#e3e6ea;--bg:#f4f5f7}
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{font-family:Inter,system-ui,sans-serif;color:var(--ink);background:var(--bg);display:flex;flex-direction:column}
+  header{display:flex;align-items:center;gap:16px;padding:12px 20px;background:#fff;border-bottom:1px solid var(--line)}
+  .brand{font-weight:800;color:var(--or);letter-spacing:.06em;font-size:18px}
+  .brand small{display:block;font-weight:500;letter-spacing:0;color:var(--mute);font-size:11px;margin-top:-2px}
+  header h1{font-size:16px;font-weight:600;margin:0;padding-left:16px;border-left:1px solid var(--line)}
+  header h1 span{display:block;font-size:12px;font-weight:400;color:var(--mute)}
+  main{flex:1;display:flex;min-height:0}
+  aside{width:290px;background:#fff;border-right:1px solid var(--line);overflow:auto;padding:8px 0 16px}
+  aside h3{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);margin:14px 18px 6px;font-weight:600}
+  .item{display:flex;align-items:center;gap:10px;padding:7px 18px;cursor:pointer;font-size:13px;line-height:1.3}
+  .item:hover{background:#f6f7f9}
+  .item.sel{background:#fdf0e9}
+  .num{flex:none;width:22px;height:22px;border-radius:50%;background:var(--ink);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center}
+  .item.sel .num{background:var(--or)}
+  #viewer{flex:1;position:relative;overflow:hidden;background:radial-gradient(ellipse at 50% 38%,#fff 0%,#eceff2 62%,#dde1e5 100%)}
+  #viewer canvas{display:block;touch-action:none}
+  .hint{position:absolute;top:14px;left:16px;font-size:12px;color:var(--mute);background:rgba(255,255,255,.75);padding:6px 10px;border-radius:8px}
+  .controls{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;gap:8px;align-items:center;background:rgba(255,255,255,.94);backdrop-filter:blur(8px);padding:10px 14px;border-radius:14px;box-shadow:0 6px 24px rgba(20,30,40,.10);flex-wrap:wrap;justify-content:center;max-width:calc(100% - 32px)}
+  .controls label{font-size:12px;color:var(--mute);display:flex;align-items:center;gap:8px}
+  input[type=range]{width:150px;accent-color:var(--or)}
+  button{font:inherit;font-size:12.5px;font-weight:500;border:1px solid var(--line);background:#fff;color:var(--ink);padding:7px 12px;border-radius:9px;cursor:pointer}
+  button:hover{border-color:#c9ced4}
+  button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  button.primary{background:var(--or);border-color:var(--or);color:#fff}
+  .card{position:absolute;top:16px;right:16px;width:330px;background:#fff;border-radius:14px;box-shadow:0 10px 32px rgba(20,30,40,.14);padding:16px 18px;display:none}
+  .card.show{display:block}
+  .card .top{display:flex;gap:10px;align-items:flex-start}
+  .card .num{width:28px;height:28px;font-size:13px;background:var(--or)}
+  .card h2{font-size:15px;margin:3px 0 0;line-height:1.3}
+  .card p{font-size:13px;line-height:1.5;margin:10px 0 0;color:#353b42}
+  .card .tipbox{margin-top:10px;font-size:12.5px;line-height:1.45;background:#fdf3ec;border-left:3px solid var(--or);padding:8px 10px;border-radius:0 8px 8px 0}
+  .card .row{display:flex;gap:8px;margin-top:14px}
+  .x{margin-left:auto;border:0;background:none;font-size:18px;line-height:1;padding:2px 4px;color:var(--mute)}
+  .lbl{position:absolute;left:0;top:0;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;background:var(--ink);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.2);cursor:pointer;transition:opacity .2s;user-select:none}
+  .lbl.sel{background:var(--or)}
+  #tip{position:absolute;pointer-events:none;background:var(--ink);color:#fff;font-size:12px;padding:5px 9px;border-radius:7px;white-space:nowrap;display:none;transform:translate(12px,12px)}
+  .foot{position:absolute;right:16px;bottom:16px;font-size:10.5px;color:#8a9199;max-width:220px;text-align:right}
+  #err{position:absolute;inset:0;display:none;place-items:center;text-align:center;color:var(--mute);font-size:14px;padding:30px}
+  @media (max-width:780px){
+    header h1{font-size:14px}
+    main{flex-direction:column}
+    aside{width:auto;height:30vh;order:2;border-right:0;border-top:1px solid var(--line)}
+    .card{left:12px;right:12px;width:auto;top:auto;bottom:140px}
+    .foot,.hint{display:none}
+    input[type=range]{width:110px}
+  }
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<header>
+  <div class="brand">PINECO<small>Trattamento Acqua</small></div>
+  <h1>Testata Autotrol 255 · controller EiQ (serie 700)<span>Modello 3D interattivo con esploso dei componenti</span></h1>
+</header>
+<main>
+  <aside id="list"></aside>
+  <div id="viewer">
+    <div class="hint">Trascina per ruotare · rotella o pizzica per lo zoom · clic su un pezzo</div>
+    <div id="labels"></div>
+    <div id="tip"></div>
+    <div class="card" id="card">
+      <div class="top"><div class="num" id="cNum">1</div><h2 id="cName"></h2><button class="x" id="cClose" aria-label="Chiudi">×</button></div>
+      <p id="cDesc"></p>
+      <div class="tipbox" id="cTip"></div>
+      <div class="row"><button id="cIso">Isola</button><button id="cFocus">Inquadra</button></div>
+    </div>
+    <div class="controls">
+      <button class="primary" id="bExplode">Esplodi</button>
+      <label>Esploso <input type="range" id="sEx" min="0" max="1" step="0.001" value="0"></label>
+      <button id="bGhost">Coperchio trasparente</button>
+      <button id="bLabels" class="on">Numeri</button>
+      <button id="bRotate">Rotazione auto</button>
+      <button id="bHome">Vista iniziale</button>
+    </div>
+    <div class="foot">Modello semplificato a scopo illustrativo, ricostruito da disegni quotati ed esploso. Forme interne indicative.</div>
+    <div id="err">Il modello 3D richiede WebGL: apri la pagina da un browser aggiornato.</div>
+  </div>
+</main>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+/* ---------- Dati componenti ---------- */
+const PARTS = [
+ {id:1, name:'Gruppo coperchio EiQ', grp:'Comando e meccanica',
+  desc:'Copertura esterna della testata. Sul frontale inclinato integra il display e i quattro tasti del controller serie 700 (EiQ) con cui si programma e si consulta l’addolcitore.',
+  tip:'Si rimuove per accedere a scheda, motore e porta USB-C sotto la valvola. Protegge l’elettronica da polvere e spruzzi.'},
+ {id:2, name:'Valvola a camme serie 255', grp:'Comando e meccanica',
+  desc:'Albero a camme fatto ruotare dal motore. Ogni camma spinge o rilascia una delle valvole a molla: la sua rotazione definisce la sequenza delle fasi (servizio, controlavaggio, aspirazione salamoia e lavaggio lento, risciacquo, riempimento tino).',
+  tip:'Se la valvola resta bloccata in una fase, verificare che l’albero ruoti liberamente e che il sensore ottico ne legga la posizione.'},
+ {id:3, name:'Valvola 255 a molla, monoblocco', grp:'Comando e meccanica',
+  desc:'Gruppo di valvole a disco richiamate da molle, in un unico blocco. Le camme le aprono e chiudono una per una, deviando l’acqua verso bombola, scarico o iniettore a seconda della fase.',
+  tip:'Trafilamenti allo scarico in servizio indicano spesso una valvola che non chiude bene (sporco o disco usurato).'},
+ {id:4, name:'Biglia, controllo flusso interno', grp:'Corpo valvola e scarico',
+  desc:'Sfera alloggiata nel corpo valvola che regola il passaggio del flusso interno.',
+  tip:'Piccolo componente: attenzione a non perderlo durante lo smontaggio.'},
+ {id:5, name:'Gruppo comando scarico con O-ring', grp:'Corpo valvola e scarico',
+  desc:'Raccordo di scarico con il regolatore di portata: limita la portata di controlavaggio al valore adatto al diametro della bombola, così la resina si espande senza essere trascinata allo scarico.',
+  tip:'Il regolatore va scelto in base al diametro della bombola. Tubo di scarico libero, senza strozzature né contropendenze.'},
+ {id:6, name:'Chiavistello di bloccaggio', grp:'Corpo valvola e scarico',
+  desc:'Fermo che tiene uniti i componenti della valvola. Sfilandolo si possono separare i gruppi per la manutenzione.',
+  tip:'Rimontarlo sempre fino in fondo prima di rimettere in pressione.'},
+ {id:7, name:'Filtro / gruppo cappuccio con O-ring', grp:'Corpo valvola e scarico',
+  desc:'Filtrino a rete con tappo che protegge i passaggi interni della valvola dalle impurità trasportate dall’acqua.',
+  tip:'Da controllare e pulire durante la manutenzione periodica, soprattutto con acqua di pozzo.'},
+ {id:8, name:'Modulo sensore, interruttore ottico', grp:'Comando e meccanica',
+  desc:'Sensore che legge la posizione dell’albero a camme. Così il controller sa sempre in quale fase si trova la valvola e quando fermare il motore.',
+  tip:'Errori di posizione o cicli che non si fermano: controllare connessione e pulizia del sensore.'},
+ {id:9, name:'Gruppo valvola 255', grp:'Corpo valvola e scarico',
+  desc:'Corpo idraulico principale. Contiene i passaggi di ingresso e uscita acqua, scarico e linea salamoia, e gli attacchi per l’impianto.',
+  tip:'Corpo in materiale composito: non stringere eccessivamente i raccordi filettati.'},
+ {id:10, name:'Gruppo O-ring adattatore serbatoio', grp:'Attacco bombola',
+  desc:'Guarnizioni di tenuta tra corpo valvola e adattatore del serbatoio.',
+  tip:'Lubrificare solo con grasso siliconico idoneo all’uso alimentare.'},
+ {id:11, name:'Controller di riempimento salamoia', grp:'Linea salamoia',
+  desc:'Regolatore di portata che dosa l’acqua rimandata nel tino del sale nella fase di riempimento, per preparare la salamoia della rigenerazione successiva.',
+  tip:'Tino che si riempie troppo o troppo poco: verificare questo regolatore e il tempo di riempimento programmato.'},
+ {id:12, name:'Adattatore serbatoio 255', grp:'Attacco bombola',
+  desc:'Base filettata che si avvita sul collo della bombola e accoglie il tubo centrale (distributore).',
+  tip:'Avvitare a mano: un serraggio eccessivo può danneggiare filetto e guarnizioni.'},
+ {id:13, name:'O-ring EP (collo bombola)', grp:'Attacco bombola',
+  desc:'Guarnizione di tenuta tra adattatore e collo della bombola.',
+  tip:'Sostituirla ogni volta che si smonta la testata dalla bombola.'},
+ {id:14, name:'Inserto di gomma 13/16 (opzionale)', grp:'Attacco bombola',
+  desc:'Riduttore che adatta la sede al tubo centrale da 13/16”, quando si usa questo diametro.',
+  tip:'Serve solo con tubo centrale da 13/16”.'},
+ {id:15, name:'O-ring EP (tubo centrale)', grp:'Attacco bombola',
+  desc:'Guarnizione di tenuta sul tubo centrale, separa l’acqua in ingresso da quella trattata in uscita.',
+  tip:'Se è danneggiata, acqua non trattata passa in uscita: durezza residua senza altre cause apparenti.'},
+ {id:16, name:'Kit controllo aria (Air Check)', grp:'Linea salamoia',
+  desc:'Valvola a galleggiante sulla linea salamoia: quando la salamoia è finita si chiude e impedisce che l’iniettore aspiri aria nella bombola.',
+  tip:'Aria nella bombola dopo la rigenerazione: verificare che il galleggiante si muova liberamente.'},
+ {id:17, name:'Cappuccio iniettore con O-ring', grp:'Linea salamoia',
+  desc:'Tappo che chiude il vano dell’iniettore. Svitandolo si accede all’iniettore per controllo e pulizia.',
+  tip:'Controllare l’O-ring al rimontaggio: se non tiene, l’iniettore aspira aria.'},
+ {id:18, name:'Iniettore', grp:'Linea salamoia',
+  desc:'Venturi che, durante la rigenerazione, aspira la salamoia dal tino del sale e la porta nella resina.',
+  tip:'Salamoia non aspirata: l’iniettore otturato da sporco o calcare è la causa più comune.'},
+ {id:19, name:'Gruppo O-ring bocchettoni tubazioni', grp:'Corpo valvola e scarico',
+  desc:'Guarnizioni di tenuta sugli attacchi di ingresso e uscita verso l’impianto (o verso il by-pass).',
+  tip:'Perdite ai raccordi: controllarle e sostituirle prima di stringere di più.'},
+ {id:20, name:'Piastra superiore valvola 255, controller serie 700', grp:'Comando e meccanica',
+  desc:'Piastra che chiude superiormente il corpo e fa da supporto per albero a camme, motore e sensore.',
+  tip:'Riferimento meccanico di tutto il gruppo di comando.'},
+ {id:21, name:'Motore + cavo, controller serie 700', grp:'Comando e meccanica',
+  desc:'Motoriduttore che fa ruotare l’albero a camme, comandato dal controller.',
+  tip:'Motore alimentato ma albero fermo: controllare ingranaggi e cablaggio.'},
+];
+const GROUPS = ['Comando e meccanica','Corpo valvola e scarico','Linea salamoia','Attacco bombola'];
+
+/* Spostamenti in vista esplosa (mm) */
+const EXPLODE = {
+ 1:[0,270,0], 2:[0,195,0], 3:[0,140,0], 21:[90,210,-40], 20:[0,85,0], 8:[-60,100,0],
+ 4:[-30,95,40], 5:[-95,30,0], 6:[-60,70,0], 7:[-85,0,0], 9:[0,0,0], 19:[0,0,-55],
+ 11:[-85,-40,0], 18:[60,0,0], 17:[105,0,0], 16:[155,-10,0],
+ 10:[0,-25,0], 12:[0,-70,0], 13:[0,-125,0], 14:[0,-170,0], 15:[0,-210,0]
+};
+
+/* ---------- Scena ---------- */
+const viewer = document.getElementById('viewer');
+let renderer;
+try { renderer = new THREE.WebGLRenderer({antialias:true, alpha:true}); }
+catch(e){ document.getElementById('err').style.display='grid'; throw e; }
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+viewer.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(34, 1, 0.05, 100);
+const HOME = {pos:new THREE.Vector3(4.4, 3.0, 5.0), target:new THREE.Vector3(0, 0.95, 0)};
+camera.position.copy(HOME.pos);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.copy(HOME.target);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.minDistance = 1.2; controls.maxDistance = 14;
+controls.autoRotateSpeed = 1.2;
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x80878f, 1.15));
+const key = new THREE.DirectionalLight(0xffffff, 2.3); key.position.set(5, 9, 6); scene.add(key);
+const fill = new THREE.DirectionalLight(0xffffff, 0.7); fill.position.set(-6, 3, 4); scene.add(fill);
+const rim = new THREE.DirectionalLight(0xffffff, 0.9); rim.position.set(-3, 4, -7); scene.add(rim);
+
+// ombra morbida a terra
+(function(){
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const x = c.getContext('2d'); const g = x.createRadialGradient(128,128,10,128,128,128);
+  g.addColorStop(0,'rgba(0,0,0,0.22)'); g.addColorStop(1,'rgba(0,0,0,0)');
+  x.fillStyle = g; x.fillRect(0,0,256,256);
+  const t = new THREE.CanvasTexture(c);
+  const sh = new THREE.Mesh(new THREE.PlaneGeometry(5,5), new THREE.MeshBasicMaterial({map:t, transparent:true, depthWrite:false}));
+  sh.rotation.x = -Math.PI/2; sh.position.y = -2.55; scene.add(sh);
+})();
+
+const root = new THREE.Group(); root.scale.setScalar(0.01); scene.add(root);
+
+/* ---------- Materiali e primitive ---------- */
+const MAT = {
+  cover:{color:0xeef1f4, roughness:.4, metalness:0},
+  body:{color:0x3b4047, roughness:.55},
+  plate:{color:0x646b73, roughness:.5},
+  dark:{color:0x26292d, roughness:.45},
+  rubber:{color:0x141516, roughness:.9},
+  metal:{color:0xc3c9cf, roughness:.28, metalness:.85},
+  white:{color:0xf2f3f4, roughness:.5},
+  beige:{color:0xd8ccb0, roughness:.5},
+  clear:{color:0xdcebf5, roughness:.08, transparent:true, opacity:.45},
+  bezel:{color:0xd5dade, roughness:.45},
+  orange:{color:0xE8601C, roughness:.5},
+};
+const m = k => new THREE.MeshStandardMaterial(MAT[k]);
+function add(g, geo, mat, x=0,y=0,z=0){ const me = new THREE.Mesh(geo, mat); me.position.set(x,y,z); g.add(me); return me; }
+function rbox(g, mat, w,h,d, x,y,z, r=4){ r = Math.min(r, w/2-.01, h/2-.01, d/2-.01); return add(g, new RoundedBoxGeometry(w,h,d,3,r), mat, x,y,z); }
+function cyl(g, mat, r, len, x,y,z, axis='y', r2=r, seg=40){
+  const me = add(g, new THREE.CylinderGeometry(r, r2, len, seg), mat, x,y,z);
+  if(axis==='x') me.rotation.z = Math.PI/2; if(axis==='z') me.rotation.x = Math.PI/2; return me; }
+function ring(g, mat, R, t, x,y,z, axis='y'){
+  const me = add(g, new THREE.TorusGeometry(R, t, 12, 56), mat, x,y,z);
+  if(axis==='y') me.rotation.x = Math.PI/2; if(axis==='x') me.rotation.y = Math.PI/2; return me; }
+function threads(g, mat, R, from, to, step, base, axis){
+  for(let s=from; s<=to; s+=step){ const p = {...base}; p[axis] += s; ring(g, mat, R, 1.4, p.x, p.y, p.z, axis); } }
+
+/* ---------- Costruzione componenti (mm; origine = asse bombola, y=0 base filetto) ---------- */
+const BUILD = {
+  1(g){ // coperchio
+    const s = new THREE.Shape();
+    s.moveTo(138,80); s.lineTo(192,166); s.quadraticCurveTo(198,178,184,181);
+    s.lineTo(20,192); s.quadraticCurveTo(-90,200,-128,200); s.quadraticCurveTo(-152,200,-153,182);
+    s.lineTo(-154,112); s.quadraticCurveTo(-154,104,-140,104); s.lineTo(40,100); s.lineTo(126,76); s.quadraticCurveTo(134,74,138,80);
+    const geo = new THREE.ExtrudeGeometry(s, {depth:197, bevelEnabled:true, bevelThickness:12, bevelSize:12, bevelSegments:5, curveSegments:18});
+    geo.rotateY(-Math.PI/2); geo.translate(92,0,0); geo.computeVertexNormals();
+    add(g, geo, m('cover'));
+    // frontale con display
+    const f = new THREE.Group(); f.position.set(-6.5, 117.5, 179); f.rotation.x = 0.567; g.add(f);
+    rbox(f, m('bezel'), 132, 92, 3, 0, 2, 0.8, 1.4);
+    rbox(f, m('dark'), 92, 40, 2, 0, 20, 2.6, 1);
+    const c = document.createElement('canvas'); c.width = 384; c.height = 160; const x = c.getContext('2d');
+    x.fillStyle = '#a9c2b4'; x.fillRect(0,0,384,160);
+    x.fillStyle = '#1f2a26'; x.font = '700 70px Inter, sans-serif'; x.textAlign='center'; x.fillText('12:30', 192, 82);
+    x.font = '600 30px Inter, sans-serif'; x.fillText('SERVIZIO', 192, 132);
+    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+    add(f, new THREE.PlaneGeometry(84, 34), new THREE.MeshBasicMaterial({map:tex}), 0, 20, 3.7);
+    [-30,-10,10,30].forEach(px => cyl(f, m('dark'), 6, 4, px, -12, 2.5, 'z'));
+    const c2 = document.createElement('canvas'); c2.width = 256; c2.height = 48; const y = c2.getContext('2d');
+    y.fillStyle = '#E8601C'; y.font = '800 34px Inter, sans-serif'; y.textAlign = 'center'; y.fillText('PINECO', 128, 36);
+    const t2 = new THREE.CanvasTexture(c2); t2.colorSpace = THREE.SRGBColorSpace;
+    add(f, new THREE.PlaneGeometry(44, 8.3), new THREE.MeshBasicMaterial({map:t2, transparent:true}), 0, -32, 2.6);
+  },
+  2(g){ // albero a camme
+    cyl(g, m('dark'), 6, 190, 0,152,-24, 'z');
+    for(let i=0;i<7;i++){
+      const z = -95 + i*25, a = i*0.9;
+      cyl(g, m('white'), 16, 8, 0,152,z, 'z');
+      const lobe = rbox(g, m('white'), 12, 12, 8, 15*Math.sin(a), 152+15*Math.cos(a), z, 3); lobe.rotation.z = -a;
+    }
+    cyl(g, m('white'), 23, 7, 0,152,-115, 'z');
+    for(let i=0;i<22;i++){ const a = i/22*Math.PI*2; const t = rbox(g, m('white'), 4.5, 5, 7, 25*Math.sin(a), 152+25*Math.cos(a), -115, 1); t.rotation.z = -a; }
+  },
+  3(g){ // valvole a molla
+    rbox(g, m('dark'), 46, 6, 182, 0,121,-25, 2);
+    for(let i=0;i<7;i++){
+      const z = -95 + i*25;
+      for(let k=0;k<5;k++) ring(g, m('metal'), 5, 0.9, 0, 126+k*2.6, z, 'y');
+      cyl(g, m('rubber'), 9, 3, 0,138,z);
+    }
+  },
+  4(g){ add(g, new THREE.SphereGeometry(6, 24, 16), m('metal'), -50, 80, 60); },
+  5(g){ // scarico
+    cyl(g, m('white'), 11, 26, -72,80,60, 'x');
+    ring(g, m('rubber'), 11, 1.6, -64,80,60, 'x');
+    cyl(g, m('white'), 6, 18, -94,80,60, 'x', 4.5);
+    for(let k=0;k<3;k++) ring(g, m('white'), 6, 1.2, -90-k*4, 80, 60, 'x');
+  },
+  6(g){ // chiavistello
+    rbox(g, m('metal'), 6, 6, 150, -74,100,-30, 2);
+    rbox(g, m('metal'), 6, 34, 6, -74,86,44, 2);
+    cyl(g, m('metal'), 3, 22, -74,111,-100);
+    cyl(g, m('metal'), 5, 3, -74,122,-100);
+  },
+  7(g){ cyl(g, m('white'), 9, 22, -72,75,-10, 'x'); cyl(g, m('white'), 11.5, 6, -86,75,-10, 'x'); ring(g, m('rubber'), 9.5, 1.3, -80,75,-10, 'x'); },
+  8(g){ rbox(g, m('dark'), 16, 18, 24, -40,128,-90, 2);
+        add(g, new THREE.SphereGeometry(2, 12, 8), new THREE.MeshStandardMaterial({color:0x2fd06a, emissive:0x2fd06a, emissiveIntensity:.8}), -31,132,-90); },
+  9(g){ // corpo valvola
+    rbox(g, m('body'), 130, 50, 220, 0,73,-25, 8);
+    cyl(g, m('body'), 46, 6, 0,47,0);
+    [-38,38].forEach(x => {
+      cyl(g, m('body'), 15, 66, x,70,-152, 'z');
+      threads(g, m('body'), 15.2, -183, -165, 4, {x, y:70, z:0}, 'z');
+      cyl(g, m('rubber'), 10, 1, x,70,-185.4, 'z');
+    });
+    cyl(g, m('body'), 10, 12, 68,75,-60, 'x');
+  },
+  10(g){ [[-30,-40],[30,-40],[-30,20],[30,20]].forEach(([x,z]) => ring(g, m('rubber'), 9, 2, x,49,z)); },
+  11(g){ cyl(g, m('white'), 8, 20, -72,62,-70, 'x'); cyl(g, m('white'), 11, 6, -84,62,-70, 'x', 11, 6); },
+  12(g){ // adattatore
+    cyl(g, m('body'), 40, 36, 0,18,0);
+    threads(g, m('body'), 40.6, 4, 32, 4, {x:0,y:0,z:0}, 'y');
+    rbox(g, m('body'), 150, 10, 130, 0,41,-10, 4);
+    cyl(g, m('rubber'), 14, 1, 0,-0.6,0);
+  },
+  13(g){ ring(g, m('rubber'), 40, 3, 0,37,0); },
+  14(g){ cyl(g, m('rubber'), 15, 30, 0,10,0); cyl(g, m('dark'), 10, 30.5, 0,10,0); },
+  15(g){ ring(g, m('rubber'), 14, 2.2, 0,-5,0); },
+  16(g){ // air check
+    cyl(g, m('clear'), 24, 50, 100,48,-60);
+    cyl(g, m('white'), 25.5, 8, 100,77,-60);
+    cyl(g, m('white'), 25.5, 6, 100,21,-60);
+    add(g, new THREE.SphereGeometry(10, 24, 16), m('orange'), 100,42,-60);
+    cyl(g, m('white'), 5, 12, 100,87,-60);
+    cyl(g, m('white'), 4, 18, 100,9,-60);
+  },
+  17(g){ cyl(g, m('dark'), 13, 12, 84,75,-60, 'x'); ring(g, m('rubber'), 11, 1.4, 78,75,-60, 'x'); },
+  18(g){ cyl(g, m('beige'), 7, 18, 70,75,-60, 'x'); cyl(g, m('beige'), 4, 8, 82,75,-60, 'x'); },
+  19(g){ [-38,38].forEach(x => { ring(g, m('rubber'), 15.6, 1.8, x,70,-128, 'z'); ring(g, m('rubber'), 15.6, 1.8, x,70,-140, 'z'); }); },
+  20(g){ // piastra superiore
+    rbox(g, m('plate'), 140, 16, 250, 0,108,-35, 4);
+    [-62,62].forEach(x => rbox(g, m('plate'), 4, 12, 220, x,121,-35, 1.5));
+    [[-55,-140],[55,-140],[-55,60],[55,60]].forEach(([x,z]) => cyl(g, m('plate'), 5, 24, x,128,z));
+    rbox(g, m('plate'), 30, 34, 10, 0,133,72, 3);
+    rbox(g, m('plate'), 30, 34, 10, 0,133,-125, 3);
+  },
+  21(g){ // motore
+    cyl(g, m('dark'), 20, 32, 32,152,-143, 'z');
+    cyl(g, m('metal'), 20.5, 4, 32,152,-160, 'z');
+    cyl(g, m('metal'), 7, 8, 32,152,-117, 'z');
+    rbox(g, m('plate'), 48, 6, 10, 32,128,-126, 2);
+    const curve = new THREE.CatmullRomCurve3([new THREE.Vector3(32,152,-162), new THREE.Vector3(30,150,-176), new THREE.Vector3(-10,140,-170), new THREE.Vector3(-50,128,-140), new THREE.Vector3(-55,124,-100)]);
+    add(g, new THREE.TubeGeometry(curve, 40, 2.4, 8, false), m('dark'));
+  },
+};
+
+/* ---------- Istanziazione ---------- */
+const P = {}; const pickables = [];
+PARTS.forEach(p => {
+  const g = new THREE.Group(); g.userData.id = p.id; BUILD[p.id](g); root.add(g);
+  g.traverse(o => { if(o.isMesh){ o.userData.id = p.id; o.userData.base = {t:o.material.transparent, o:o.material.opacity}; pickables.push(o); } });
+  P[p.id] = {...p, g, v:EXPLODE[p.id]};
+});
+
+/* ---------- Stato e UI ---------- */
+let ex = 0, exTarget = 0, ghost = false, showLabels = true, sel = null, hover = null, iso = false;
+const $ = id => document.getElementById(id);
+
+// lista laterale
+const list = $('list');
+GROUPS.forEach(gn => {
+  const h = document.createElement('h3'); h.textContent = gn; list.appendChild(h);
+  PARTS.filter(p => p.grp === gn).sort((a,b)=>a.id-b.id).forEach(p => {
+    const d = document.createElement('div'); d.className = 'item'; d.dataset.id = p.id;
+    d.innerHTML = `<span class="num">${p.id}</span><span>${p.name}</span>`;
+    d.onclick = () => select(p.id, true);
+    list.appendChild(d); P[p.id].li = d;
+  });
+});
+// etichette
+const labels = $('labels');
+PARTS.forEach(p => { const l = document.createElement('div'); l.className = 'lbl'; l.textContent = p.id; l.onclick = e => { e.stopPropagation(); select(p.id); }; labels.appendChild(l); P[p.id].lbl = l; });
+
+function select(id, fromList=false){
+  sel = id; iso = false; $('cIso').classList.remove('on');
+  const p = P[id];
+  $('cNum').textContent = id; $('cName').textContent = p.name; $('cDesc').textContent = p.desc; $('cTip').textContent = p.tip;
+  $('card').classList.add('show');
+  PARTS.forEach(q => { P[q.id].li.classList.toggle('sel', q.id===id); P[q.id].lbl.classList.toggle('sel', q.id===id); });
+  if(fromList) p.li.scrollIntoView({block:'nearest'});
+  if(id !== 1 && ex < 0.5 && !ghost) setExplode(1);
+  styleAll();
+}
+function deselect(){ sel = null; iso = false; $('card').classList.remove('show'); PARTS.forEach(q => { P[q.id].li.classList.remove('sel'); P[q.id].lbl.classList.remove('sel'); }); styleAll(); }
+
+const SEL_EM = new THREE.Color(0xE8601C), HOV_EM = new THREE.Color(0x3a3a3a), NO_EM = new THREE.Color(0x000000);
+function styleAll(){
+  PARTS.forEach(p => {
+    P[p.id].g.traverse(o => {
+      if(!o.isMesh) return; const mt = o.material, b = o.userData.base;
+      if(mt.emissive && !(p.id===8 && mt.emissiveIntensity===.8 && mt.color.getHex()===0x2fd06a)){
+        mt.emissive.copy(p.id===sel ? SEL_EM : p.id===hover ? HOV_EM : NO_EM);
+        mt.emissiveIntensity = p.id===sel ? 0.35 : 1;
+      }
+      let op = b.o, tr = b.t;
+      if(iso && sel && p.id!==sel){ op = 0.08; tr = true; }
+      else if(p.id===1 && ghost){ op = 0.16; tr = true; }
+      mt.transparent = tr; mt.opacity = op; mt.depthWrite = !(tr && op < 0.3); mt.needsUpdate = true;
+    });
+  });
+}
+
+function setExplode(v){ exTarget = v; $('bExplode').textContent = v > 0.5 ? 'Ricomponi' : 'Esplodi'; }
+$('bExplode').onclick = () => setExplode(exTarget > 0.5 ? 0 : 1);
+$('sEx').oninput = e => { ex = exTarget = +e.target.value; $('bExplode').textContent = ex > 0.5 ? 'Ricomponi' : 'Esplodi'; };
+$('bGhost').onclick = e => { ghost = !ghost; e.target.classList.toggle('on', ghost); styleAll(); };
+$('bLabels').onclick = e => { showLabels = !showLabels; e.target.classList.toggle('on', showLabels); };
+$('bRotate').onclick = e => { controls.autoRotate = !controls.autoRotate; e.target.classList.toggle('on', controls.autoRotate); };
+$('bHome').onclick = () => flyTo(HOME.pos, HOME.target);
+$('cClose').onclick = deselect;
+$('cIso').onclick = e => { iso = !iso; e.target.classList.toggle('on', iso); styleAll(); };
+$('cFocus').onclick = () => {
+  if(!sel) return; const b = new THREE.Box3().setFromObject(P[sel].g); const c = b.getCenter(new THREE.Vector3());
+  const r = Math.max(b.getSize(new THREE.Vector3()).length(), 0.6);
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  flyTo(c.clone().add(dir.multiplyScalar(r*2.2 + 0.8)), c);
+};
+
+let fly = null;
+function flyTo(pos, target){ fly = {p0:camera.position.clone(), t0:controls.target.clone(), p1:pos.clone(), t1:target.clone(), k:0}; }
+
+/* ---------- Picking ---------- */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), tip = $('tip');
+function pick(ev){
+  const r = renderer.domElement.getBoundingClientRect();
+  ndc.set(((ev.clientX-r.left)/r.width)*2-1, -((ev.clientY-r.top)/r.height)*2+1);
+  ray.setFromCamera(ndc, camera);
+  const objs = pickables.filter(o => !(ghost && o.userData.id===1) && !(iso && sel && o.userData.id!==sel));
+  const hit = ray.intersectObjects(objs, false)[0];
+  return hit ? hit.object.userData.id : null;
+}
+let down = null;
+renderer.domElement.addEventListener('pointerdown', e => { down = {x:e.clientX, y:e.clientY}; });
+renderer.domElement.addEventListener('pointerup', e => {
+  if(!down) return; const moved = Math.hypot(e.clientX-down.x, e.clientY-down.y); down = null;
+  if(moved > 5) return; const id = pick(e); id ? select(id) : deselect();
+});
+renderer.domElement.addEventListener('pointermove', e => {
+  if(e.pointerType !== 'mouse') return;
+  const id = pick(e);
+  if(id !== hover){ hover = id; styleAll(); }
+  renderer.domElement.style.cursor = id ? 'pointer' : 'grab';
+  if(id){ const r = viewer.getBoundingClientRect(); tip.style.display='block'; tip.style.left=(e.clientX-r.left)+'px'; tip.style.top=(e.clientY-r.top)+'px'; tip.textContent = id+' · '+P[id].name; }
+  else tip.style.display='none';
+});
+renderer.domElement.addEventListener('pointerleave', () => { tip.style.display='none'; if(hover){ hover=null; styleAll(); } });
+
+/* ---------- Loop ---------- */
+function resize(){ const w = viewer.clientWidth, h = viewer.clientHeight; renderer.setSize(w, h, false); renderer.domElement.style.width = w+'px'; renderer.domElement.style.height = h+'px'; camera.aspect = w/h; camera.updateProjectionMatrix(); }
+new ResizeObserver(resize).observe(viewer); resize();
+
+const ease = t => t<.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2;
+const tmpB = new THREE.Box3(), tmpV = new THREE.Vector3();
+function tick(){
+  requestAnimationFrame(tick);
+  if(Math.abs(exTarget-ex) > 0.0005){ ex += (exTarget-ex)*0.075; $('sEx').value = ex; } else ex = exTarget;
+  const e = ease(Math.min(Math.max(ex,0),1));
+  PARTS.forEach(p => { const v = P[p.id].v; P[p.id].g.position.set(v[0]*e, v[1]*e, v[2]*e); });
+  if(fly){ fly.k = Math.min(fly.k+0.035, 1); const k = ease(fly.k);
+    camera.position.lerpVectors(fly.p0, fly.p1, k); controls.target.lerpVectors(fly.t0, fly.t1, k); if(fly.k>=1) fly = null; }
+  controls.update();
+  renderer.render(scene, camera);
+  // etichette
+  const w = viewer.clientWidth, h = viewer.clientHeight;
+  const vis = showLabels && (ex > 0.25 || ghost);
+  PARTS.forEach(p => {
+    const l = P[p.id].lbl;
+    const hidden = !vis || (iso && sel && p.id!==sel) || (p.id===1 && ex < 0.25);
+    if(hidden){ l.style.display='none'; return; }
+    tmpB.setFromObject(P[p.id].g); tmpB.getCenter(tmpV); tmpV.project(camera);
+    if(tmpV.z > 1){ l.style.display='none'; return; }
+    l.style.display='grid'; l.style.transform = `translate(${(tmpV.x*.5+.5)*w}px,${(-tmpV.y*.5+.5)*h}px)`;
+  });
+}
+styleAll(); tick();
+</script>
+</body>
+</html>
